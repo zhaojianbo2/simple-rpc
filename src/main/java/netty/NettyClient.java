@@ -25,7 +25,6 @@ import rpc.imp.IRemoteImp;
  */
 public class NettyClient<T> implements IRemoteImp<T> {
 
-    private RpcResponseHandler rpcResponseHandler;
     private Channel channel;
 
     /**
@@ -36,7 +35,6 @@ public class NettyClient<T> implements IRemoteImp<T> {
      * @param port
      */
     public NettyClient(String name, String host, int port, RpcResponseHandler rpcResponseHandler) {
-	this.rpcResponseHandler = rpcResponseHandler;
 	EventLoopGroup workerGroup = new NioEventLoopGroup();
 	Bootstrap b = new Bootstrap(); // (1)
 	b.group(workerGroup); // (2)
@@ -47,8 +45,8 @@ public class NettyClient<T> implements IRemoteImp<T> {
 	    public void initChannel(SocketChannel ch) throws Exception {
 		ch.pipeline().addLast(new StringDecoder());
 		ch.pipeline().addLast(new StringEncoder());
-		// 单列handler
-		ch.pipeline().addLast(rpcResponseHandler);
+		// 回调rpc handler 绑定了对应的rpctask 所有这里不能sharable
+		ch.pipeline().addLast("rpcResponseHandler", rpcResponseHandler);
 	    }
 	});
 	try {
@@ -61,6 +59,7 @@ public class NettyClient<T> implements IRemoteImp<T> {
 
     @SuppressWarnings("unchecked")
     public ITaskFinishListener<T> getTaskFinishListener() {
+	RpcResponseHandler rpcResponseHandler = (RpcResponseHandler) channel.pipeline().get("rpcResponseHandler");
 	return (ITaskFinishListener<T>) rpcResponseHandler.getTaskFinishListener();
     }
 

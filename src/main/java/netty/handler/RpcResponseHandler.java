@@ -4,11 +4,9 @@ import com.alibaba.fastjson.JSONObject;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import listener.ITaskFinishListener;
+import rpc.RpcTask;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
-import io.netty.channel.ChannelHandler.Sharable;
 
 /**
  * 
@@ -16,23 +14,29 @@ import io.netty.channel.ChannelHandler.Sharable;
  * @note
  *
  */
-@Sharable
 public class RpcResponseHandler extends SimpleChannelInboundHandler<String> {
 
-    private ITaskFinishListener<?> taskFinishListener;
+    private ITaskFinishListener<JSONObject> taskFinishListener;
     private ExecutorService taskExecutors;
 
-    public RpcResponseHandler(ITaskFinishListener<?> taskFinishListener) {
+    public RpcResponseHandler(ExecutorService taskExecutors, ITaskFinishListener<JSONObject> taskFinishListener) {
 	this.taskFinishListener = taskFinishListener;
-	taskExecutors = Executors.newCachedThreadPool();
+	this.taskExecutors = taskExecutors;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, String s) throws Exception {
-	JSONObject SONObject = JSONObject.parseObject(s);
-	String taskId = SONObject.getString("taskId");
-	// 获取FutureTask,并提交到线程池当中执行
-	FutureTask<?> rpcTask = taskFinishListener.getFutureTask(taskId);
+	JSONObject jsonObj = JSONObject.parseObject(s);
+	String taskId = jsonObj.getString("taskId");
+	// 直接移调rpcTask
+	RpcTask<JSONObject> rpcTask = taskFinishListener.getAndRemoveRpcTask(taskId);
+	if (rpcTask == null) {
+	    System.out.println("没有找到RpcTask或者已经超时移除 taskId:" + taskId);
+	    return;
+	}
+	// 赋值
+	rpcTask.returnData = jsonObj;
+	// 与netty线程脱离
 	taskExecutors.submit(rpcTask);
     }
 

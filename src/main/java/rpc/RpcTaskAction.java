@@ -13,5 +13,5 @@ import java.util.concurrent.TimeUnit;
 public interface RpcTaskAction {
     public <T> T get(IMessage message, long time, TimeUnit timeUnit);
 
-    public <T> void getAsync(IMessage message);
+    public <T> void runAsync(IMessage message);
 }

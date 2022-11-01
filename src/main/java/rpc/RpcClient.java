@@ -10,9 +10,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 /**
  * 
@@ -38,15 +42,18 @@ public class RpcClient implements RpcTaskAction, IRpcConnectionRegister {
 	TaskMessageWrap taskMessageWrap = new TaskMessageWrap(taskId, message);
 	// 这里随机要一个,演示用
 	IRemoteImp<T> remoteImp = (IRemoteImp<T>) rpcConnectionList.get(random.nextInt(rpcConnectionList.size()));
-	RpcTask<T> rpcTask = new RpcTask<T>(taskId, new Callable<T>() {
-	    @Override
-	    public T call() throws Exception {
-		// 正常收到消息返回处理
-		return remoteImp.getTaskFinishListener().taskSyncFinish(taskId);
-	    }
+	// 构造同步rpcTask
+	RpcTask<T> rpcTask = new RpcTask<T>(taskId);
+	// 使用 FutureTask 使用同步taskSyncFinish
+	Future<T> future = createFutureTask(rpcTask, remoteImp, () -> {
+	    return remoteImp.getTaskFinishListener().taskSyncFinish(rpcTask);
 	});
+	// 或者使用compltableFuture
+	// Future<T> future = createCompletableFuture();
+
+	rpcTask.future = future;
 	try {
-	    // 加入回调map
+	    // 回去当前连接的TaskFinishListener 并添加rpcTask
 	    remoteImp.getTaskFinishListener().addRpcTask(rpcTask);
 	    // 远程客户端异步发送消息
 	    remoteImp.sendMsg(taskMessageWrap);
@@ -55,7 +62,7 @@ public class RpcClient implements RpcTaskAction, IRpcConnectionRegister {
 	} catch (InterruptedException | ExecutionException | TimeoutException e) {
 	    e.printStackTrace();
 	    // 超时处理
-	    remoteImp.getTaskFinishListener().timeOut(taskId);
+	    remoteImp.getTaskFinishListener().timeOut(taskMessageWrap);
 	}
 	return null;
     }
@@ -65,23 +72,46 @@ public class RpcClient implements RpcTaskAction, IRpcConnectionRegister {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public <T> void getAsync(IMessage message) {
+    public <T> void runAsync(IMessage message) {
 	String taskId = UUID.randomUUID().toString();
 	// 消息统一封装
 	TaskMessageWrap taskMessageWrap = new TaskMessageWrap(taskId, message);
 	// 这里随机要一个,演示用
 	IRemoteImp<T> remoteImp = (IRemoteImp<T>) rpcConnectionList.get(random.nextInt(rpcConnectionList.size()));
-	RpcTask<T> rpcTask = new RpcTask<T>(taskId, new Runnable() {
-	    @Override
-	    public void run() {
-		remoteImp.getTaskFinishListener().taskAsyncFinish(taskId);
+	// 构建异步rpcTask
+	AsyncRpcTask<T> asyncRpcTask = new AsyncRpcTask<T>(message.getMessageId(), null, taskId);
+	// 使用compltableFuture
+	// Future<T> future = createCompletableFuture();
+	// 使用FutureTask 使用异步 这里返回值为null即可,异步不会调用future.get()
+	FutureTask<T> future = createFutureTask(asyncRpcTask, remoteImp, () -> {
+	    try {
+		remoteImp.getTaskFinishListener().taskAsyncFinish(asyncRpcTask);
+	    } catch (Exception e) {
+		e.printStackTrace();
 	    }
+	    return null;
 	});
-	// 加入回调map
-	remoteImp.getTaskFinishListener().addRpcTask(rpcTask);
+	// 使用 FutureTask
+	asyncRpcTask.future = future;
+	// 回去当前连接的TaskFinishListener 并添加rpcTask
+	remoteImp.getTaskFinishListener().addRpcTask(asyncRpcTask);
 	// 远程客户端异步发送消息
 	remoteImp.sendMsg(taskMessageWrap);
+    }
 
+    private <T> FutureTask<T> createFutureTask(RpcTask<T> rpcTask, IRemoteImp<T> remoteImp, Supplier<T> supplier) {
+	FutureTask<T> future = new FutureTask<>(new Callable<T>() {
+	    @Override
+	    public T call() throws Exception {
+		return supplier.get();
+	    }
+	});
+	return future;
+    }
+
+    private <T> Future<T> createCompletableFuture() {
+	CompletableFuture<T> future = new CompletableFuture<>();
+	return future;
     }
 
     /**

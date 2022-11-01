@@ -8,6 +8,6 @@ package message;
  */
 public interface IMessage {
    
-    //public int getMessageId();
+    public int getMessageId();
     
 }

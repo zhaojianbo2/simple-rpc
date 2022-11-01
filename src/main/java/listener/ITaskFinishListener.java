@@ -1,8 +1,9 @@
 package listener;
 
-import java.util.concurrent.FutureTask;
 
+import rpc.AsyncRpcTask;
 import rpc.RpcTask;
+import rpc.TaskMessageWrap;
 
 /**
  * 
@@ -12,16 +13,16 @@ import rpc.RpcTask;
  */
 public interface ITaskFinishListener<T> {
 
-    public T taskSyncFinish(String taskId);
-    
-    public void taskAsyncFinish(String taskId);
+    public T taskSyncFinish(RpcTask<T> rpcTask);
 
-    public T timeOut(String taskId);
-    
+    public void taskAsyncFinish (AsyncRpcTask<T> asyncRpcTask) throws Exception;
+
+    public void timeOut(TaskMessageWrap taskMessageWrap);
+
     public void addRpcTask(RpcTask<T> sncRpcTask);
 
-    public FutureTask<T> getFutureTask(String taskId);
-    
+    public RpcTask<T> getAndRemoveRpcTask(String taskId);
+
     public void clear();
 
 }
