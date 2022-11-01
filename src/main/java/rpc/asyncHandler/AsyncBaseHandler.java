@@ -6,7 +6,7 @@ package rpc.asyncHandler;
  * @note
  *
  */
-public interface AsyncBaseHandler {
+public interface AsyncBaseHandler<T> {
 
-    public void action();
+    public void action(T data);
 }

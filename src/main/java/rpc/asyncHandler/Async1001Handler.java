@@ -1,15 +1,17 @@
 package rpc.asyncHandler;
 
+import com.alibaba.fastjson.JSONObject;
+
 /**
  * 
  * @author WinkeyZhao
  * @note 处理1001 msgId的handler
  *
  */
-public class Async1001Handler implements AsyncBaseHandler {
+public class Async1001Handler implements AsyncBaseHandler<JSONObject> {
 
     @Override
-    public void action() {
+    public void action(JSONObject data) {
 
     }
 

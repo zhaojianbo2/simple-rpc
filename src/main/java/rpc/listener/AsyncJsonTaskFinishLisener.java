@@ -17,9 +17,9 @@ import rpc.asyncHandler.AsyncBaseHandler;
  */
 public class AsyncJsonTaskFinishLisener extends JsonTaskFinishListener {
 
-    private Map<Integer, AsyncBaseHandler> asyncHandlerMap = new HashMap<>();
+    private Map<Integer, AsyncBaseHandler<JSONObject>> asyncHandlerMap = new HashMap<>();
 
-    public void registerAsyncHandlerMap(int msgId, AsyncBaseHandler handler) {
+    public void registerAsyncHandlerMap(int msgId, AsyncBaseHandler<JSONObject> handler) {
 	asyncHandlerMap.put(msgId, handler);
     }
 
@@ -30,13 +30,13 @@ public class AsyncJsonTaskFinishLisener extends JsonTaskFinishListener {
 	// 指定线程执行
 	if (asyncRpcTask.getExcutor() != null) {
 	    asyncRpcTask.getExcutor().execute(() -> {
-		AsyncBaseHandler handler = asyncHandlerMap.get(asyncRpcTask.getMsgId());
-		handler.action();
+		AsyncBaseHandler<JSONObject> handler = asyncHandlerMap.get(asyncRpcTask.getMsgId());
+		handler.action(asyncRpcTask.returnData);
 	    });
 	} else {
 	    // 直接执行
-	    AsyncBaseHandler handler = asyncHandlerMap.get(asyncRpcTask.getMsgId());
-	    handler.action();
+	    AsyncBaseHandler<JSONObject> handler = asyncHandlerMap.get(asyncRpcTask.getMsgId());
+	    handler.action(asyncRpcTask.returnData);
 	}
 
     }
