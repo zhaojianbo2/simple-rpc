@@ -1,5 +1,12 @@
 package netty;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import com.alibaba.fastjson.JSON;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -11,10 +18,15 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import listener.ITaskFinishListener;
+import message.IMessage;
+import message.rpcReq.AbstractMessage;
 import netty.handler.RpcResponseHandler;
-import rpc.TaskMessageWrap;
 import rpc.imp.IRemoteImp;
+import rpc.rpctask.AsyncRpcTask;
+import rpc.rpctask.SyncRpcTask;
 
 /**
  * rpc远程客户端netty实现
@@ -23,7 +35,7 @@ import rpc.imp.IRemoteImp;
  * @note
  *
  */
-public class NettyClient<T> implements IRemoteImp<T> {
+public class NettyClient implements IRemoteImp {
 
     private Channel channel;
 
@@ -57,17 +69,48 @@ public class NettyClient<T> implements IRemoteImp<T> {
 	}
     }
 
-    @SuppressWarnings("unchecked")
-    public ITaskFinishListener<T> getTaskFinishListener() {
+    public ITaskFinishListener getTaskFinishListener() {
 	RpcResponseHandler rpcResponseHandler = (RpcResponseHandler) channel.pipeline().get("rpcResponseHandler");
-	return (ITaskFinishListener<T>) rpcResponseHandler.getTaskFinishListener();
+	return rpcResponseHandler.getTaskFinishListener();
     }
 
     /**
-     * netty 异步发送消息
+     * 
      */
     @Override
-    public void sendMsg(TaskMessageWrap taskMessageWrap) {
-	channel.writeAndFlush(taskMessageWrap.toString());
+    public <T> T get(AbstractMessage msg, SyncRpcTask<T> syncRpcTask, long time, TimeUnit timeUnit) {
+	ChannelFuture channelFuture;
+	try {
+	    channelFuture = channel.writeAndFlush(JSON.toJSONString(msg)).sync();
+	    // 确认消息发送,才阻塞等待
+	    if (channelFuture.isSuccess()) {
+		getTaskFinishListener().addRpcTask(syncRpcTask);
+		return syncRpcTask.getFuture().get(time, timeUnit);
+	    } else {
+		System.out.println("netty 发送消息失败,直接返回null");
+	    }
+	} catch (InterruptedException | ExecutionException | TimeoutException e1) {
+	    e1.printStackTrace();
+	    getTaskFinishListener().timeOut(msg);
+	}
+	return null;
+    }
+
+    @Override
+    public <T> void runAsync(AbstractMessage msg, AsyncRpcTask<T> AsyncRpcTask, long time, TimeUnit timeUnit) {
+	channel.writeAndFlush(JSON.toJSONString(msg)).addListener(new GenericFutureListener<Future<? super Void>>() {
+	    @Override
+	    public void operationComplete(Future<? super Void> future) throws Exception {
+		if (future.isSuccess()) {
+		    getTaskFinishListener().addRpcTask(AsyncRpcTask);
+		    CompletableFuture.delayedExecutor(time, timeUnit).execute(() -> {
+			// 超时
+			getTaskFinishListener().timeOut(msg);
+		    });
+		} else {
+		    System.out.println("netty runAsync 发送消息失败");
+		}
+	    }
+	});
     }
 }

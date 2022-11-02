@@ -1,8 +1,11 @@
 package rpc.imp;
 
+import java.util.concurrent.TimeUnit;
 
 import listener.ITaskFinishListener;
-import rpc.TaskMessageWrap;
+import message.rpcReq.AbstractMessage;
+import rpc.rpctask.AsyncRpcTask;
+import rpc.rpctask.SyncRpcTask;
 
 /**
  * 远程实现
@@ -12,9 +15,11 @@ import rpc.TaskMessageWrap;
  * @param timeUnit
  * @return
  */
-public interface IRemoteImp<T> {
+public interface IRemoteImp {
 
-    public ITaskFinishListener<T> getTaskFinishListener();
+    public ITaskFinishListener getTaskFinishListener();
 
-    public void sendMsg(TaskMessageWrap taskMsg);
+    public <T> T get(AbstractMessage msg, SyncRpcTask<T> syncRpcTask, long time, TimeUnit timeUnit);
+
+    public <T> void runAsync(AbstractMessage msg, AsyncRpcTask<T> AsyncRpcTask,long time, TimeUnit timeUnit);
 }

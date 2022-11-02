@@ -4,12 +4,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
- * @author : zGame
- * @version V1.0
- * @Project: simple-rpc
- * @Package test
- * @Description: TODO
- * @date Date : 2022年02月28日 18:30
+ * 
+ * @author WinkeyZhao
+ * @note
+ *
  */
 public class Main2 {
     

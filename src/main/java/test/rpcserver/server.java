@@ -18,12 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author : zGame
- * @version V1.0
- * @Project: simple-rpc
- * @Package test.rpcserver
- * @Description: TODO
- * @date Date : 2022年02月28日 14:24
+ * 
+ * @author WinkeyZhao
+ * @note
+ *
  */
 public class server {
     

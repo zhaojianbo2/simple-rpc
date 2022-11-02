@@ -1,9 +1,10 @@
 package listener;
 
 
-import rpc.AsyncRpcTask;
-import rpc.RpcTask;
-import rpc.TaskMessageWrap;
+import message.rpcReq.AbstractMessage;
+import rpc.rpctask.AbstractRpcTask;
+import rpc.rpctask.AsyncRpcTask;
+import rpc.rpctask.SyncRpcTask;
 
 /**
  * 
@@ -11,17 +12,17 @@ import rpc.TaskMessageWrap;
  * @note 收到netty回调信息后的监听
  *
  */
-public interface ITaskFinishListener<T> {
+public interface ITaskFinishListener {
 
-    public T taskSyncFinish(RpcTask<T> rpcTask);
+    public <T> T taskSyncFinish(SyncRpcTask<T> rpcTask);
 
-    public void taskAsyncFinish (AsyncRpcTask<T> asyncRpcTask) throws Exception;
+    public <T> void taskAsyncFinish (AsyncRpcTask<T> asyncRpcTask) throws Exception;
 
-    public void timeOut(TaskMessageWrap taskMessageWrap);
+    public void timeOut(AbstractMessage msg);
 
-    public void addRpcTask(RpcTask<T> sncRpcTask);
+    public void addRpcTask(AbstractRpcTask<?> rpcTask);
 
-    public RpcTask<T> getAndRemoveRpcTask(String taskId);
+    public AbstractRpcTask<?> getAndRemoveRpcTask(String taskId);
 
     public void clear();
 

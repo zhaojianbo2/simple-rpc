@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import listener.ITaskFinishListener;
-import rpc.RpcTask;
+import rpc.rpctask.AbstractRpcTask;
 
 import java.util.concurrent.ExecutorService;
 
@@ -16,10 +16,10 @@ import java.util.concurrent.ExecutorService;
  */
 public class RpcResponseHandler extends SimpleChannelInboundHandler<String> {
 
-    private ITaskFinishListener<JSONObject> taskFinishListener;
+    private ITaskFinishListener taskFinishListener;
     private ExecutorService taskExecutors;
 
-    public RpcResponseHandler(ExecutorService taskExecutors, ITaskFinishListener<JSONObject> taskFinishListener) {
+    public RpcResponseHandler(ExecutorService taskExecutors, ITaskFinishListener taskFinishListener) {
 	this.taskFinishListener = taskFinishListener;
 	this.taskExecutors = taskExecutors;
     }
@@ -27,15 +27,17 @@ public class RpcResponseHandler extends SimpleChannelInboundHandler<String> {
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, String s) throws Exception {
 	JSONObject jsonObj = JSONObject.parseObject(s);
+	// netty发送和接收是异步的所以 taskId也要带着回来.
 	String taskId = jsonObj.getString("taskId");
 	// 直接移调rpcTask
-	RpcTask<JSONObject> rpcTask = taskFinishListener.getAndRemoveRpcTask(taskId);
+	AbstractRpcTask<?> rpcTask = taskFinishListener.getAndRemoveRpcTask(taskId);
 	if (rpcTask == null) {
 	    System.out.println("没有找到RpcTask或者已经超时移除 taskId:" + taskId);
 	    return;
 	}
+	Class<?> clazz = rpcTask.getClazz();
 	// 赋值
-	rpcTask.returnData = jsonObj;
+	rpcTask.setReturnData(jsonObj.toJavaObject(clazz));
 	// 与netty线程脱离
 	taskExecutors.submit(rpcTask);
     }
@@ -44,7 +46,7 @@ public class RpcResponseHandler extends SimpleChannelInboundHandler<String> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     }
 
-    public ITaskFinishListener<?> getTaskFinishListener() {
+    public ITaskFinishListener getTaskFinishListener() {
 	return taskFinishListener;
     }
 }

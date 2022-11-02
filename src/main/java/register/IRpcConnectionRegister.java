@@ -12,6 +12,6 @@ import netty.NettyClient;
  */
 public interface IRpcConnectionRegister {
     
-    public <T> void registerConnection(NettyClient<T> nettyClient);
+    public void registerConnection(NettyClient nettyClient);
     
 }

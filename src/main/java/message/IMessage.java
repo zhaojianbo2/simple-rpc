@@ -7,7 +7,9 @@ package message;
  *
  */
 public interface IMessage {
-   
-    public int getMessageId();
-    
+
+    public int getBindId();
+
+    public String getTaskId();
+
 }

@@ -3,12 +3,11 @@ package rpc.listener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.alibaba.fastjson.JSONObject;
-
 import listener.ITaskFinishListener;
-import rpc.AsyncRpcTask;
-import rpc.RpcTask;
-import rpc.TaskMessageWrap;
+import message.rpcReq.AbstractMessage;
+import rpc.rpctask.AbstractRpcTask;
+import rpc.rpctask.AsyncRpcTask;
+import rpc.rpctask.SyncRpcTask;
 
 /**
  * 
@@ -16,33 +15,33 @@ import rpc.TaskMessageWrap;
  * @note rpc任务收到回调监听 TODO 添加最大容量
  *
  */
-public class JsonTaskFinishListener implements ITaskFinishListener<JSONObject> {
+public class TaskFinishListener implements ITaskFinishListener {
 
-    private Map<String, RpcTask<JSONObject>> rpcTaskMap = new ConcurrentHashMap<>();
+    private Map<String, AbstractRpcTask<?>> rpcTaskMap = new ConcurrentHashMap<>();
 
     /**
      * 添加RpcTask
      */
     @Override
-    public void addRpcTask(RpcTask<JSONObject> sncRpcTask) {
-	rpcTaskMap.put(sncRpcTask.getTaskId(), sncRpcTask);
+    public void addRpcTask(AbstractRpcTask<?> rpcTask) {
+	rpcTaskMap.put(rpcTask.getTaskId(), rpcTask);
     }
 
     /**
      * 同步完成
      */
     @Override
-    public JSONObject taskSyncFinish(RpcTask<JSONObject> rpcTask) {
+    public <T> T taskSyncFinish(SyncRpcTask<T> rpcTask) {
 	System.out.println("taskFinish, taskId:" + rpcTask.getTaskId());
 	// 否者返回接收到的数据
-	return rpcTask.returnData;
+	return (T) rpcTask.getReturnData();
     }
 
     /**
      * 异步
      */
     @Override
-    public void taskAsyncFinish(AsyncRpcTask<JSONObject> asyncRpcTask) throws Exception {
+    public <T> void taskAsyncFinish(AsyncRpcTask<T> asyncRpcTask) throws Exception {
 	throw new Exception("此方法只能被异步调用");
     }
 
@@ -50,17 +49,18 @@ public class JsonTaskFinishListener implements ITaskFinishListener<JSONObject> {
      * 超时
      */
     @Override
-    public void timeOut(TaskMessageWrap taskMessageWrap) {
-	String taskId = taskMessageWrap.getTaskId();
-	System.out.println("tasktimeOut,taskMsg:" + taskMessageWrap);
-	RpcTask<JSONObject> v = rpcTaskMap.remove(taskId);
+    public void timeOut(AbstractMessage msg) {
+	String taskId = msg.getTaskId();
+	System.out.println("tasktimeOut,taskMsg:" + msg);
+	AbstractRpcTask<?> v = rpcTaskMap.remove(taskId);
 	if (v == null) {
 	    System.out.println("SncRpcTask == null taskId:" + taskId);
 	}
+	v.cancel();
     }
 
     @Override
-    public RpcTask<JSONObject> getAndRemoveRpcTask(String taskId) {
+    public AbstractRpcTask<?> getAndRemoveRpcTask(String taskId) {
 	return rpcTaskMap.remove(taskId);
     }
 
@@ -73,6 +73,5 @@ public class JsonTaskFinishListener implements ITaskFinishListener<JSONObject> {
 	    e.cancel();
 	});
     }
-
 
 }

@@ -1,41 +1,32 @@
-package rpc;
-
-import lombok.Getter;
+package rpc.rpctask;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+
+import lombok.Getter;
+import lombok.Setter;
 
 /**
- * rpcTask
+ * 同步rpcTask
  * 
  * @author WinkeyZhao
  * @note
  *
  */
 @Getter
-public class RpcTask<T> implements Runnable {
+@Setter
+public class SyncRpcTask<T> extends AbstractRpcTask<T> {
 
-    // rpcTask唯一标识
-    private final String taskId;
-    // rpcTask接收到的数据内容
-    public T returnData;
-    // future
-    public Future<T> future;
-    //同步rpcTask构造方法
-    public RpcTask(String taskId) {
-	this.taskId = taskId;
-    }
+    private Future<T> future;
 
-    public T get(long time, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
-	return future.get(time, timeUnit);
+    public SyncRpcTask(String taskId,Class<T> clazz) {
+	super(taskId,clazz);
     }
 
     @Override
     public void run() {
+	// 对不同future实例处理
 	if (future instanceof FutureTask) {
 	    // 设置回调数据
 	    FutureTask<T> futureTask = (FutureTask<T>) future;
@@ -48,9 +39,7 @@ public class RpcTask<T> implements Runnable {
 	}
     }
 
-    /**
-     * 立刻取消task
-     */
+    @Override
     public void cancel() {
 	future.cancel(true);
     }
